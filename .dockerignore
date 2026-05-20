@@ -1,0 +1,14 @@
+Dockerfile
+.dockerignore
+.git
+.gitignore
+README.md
+*.pyc
+*.pyo
+*.pyd
+__pycache__
+.pytest_cache
+scf_bootstrap
+third_party
+api_responses
+.env

@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>找房智能体 - 二手房信息查询助手</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            padding: 30px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .card h3 {
+            color: #1a237e;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .card ul {
+            color: #555;
+        }
+        
+        .card li {
+            margin-bottom: 8px;
+        }
+        
+        .search-box {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .search-box input {
+            flex: 1;
+            padding: 15px 20px;
+            font-size: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .search-box button {
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .search-box button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .search-box button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 20px;
+            background: #f5f7fa;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .status-bar span {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-bar .online {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+        }
+        
+        .status-bar .offline {
+            width: 8px;
+            height: 8px;
+            background: #ef4444;
+            border-radius: 50%;
+        }
+        
+        .result-area {
+            min-height: 300px;
+            padding: 20px;
+            background: #fafafa;
+            border-radius: 12px;
+            white-space: pre-wrap;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #333;
+        }
+        
+        .result-area:empty::before {
+            content: '输入小区名称并点击查询按钮，获取房源分析报告...';
+            color: #999;
+            font-style: italic;
+        }
+        
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: #667eea;
+            font-weight: 500;
+        }
+        
+        .loading::after {
+            content: '';
+            width: 20px;
+            height: 20px;
+            border: 2px solid #667eea;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            color: #ef4444;
+            background: #fee2e2;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .success-message {
+            color: #10b981;
+            background: #d1fae5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .highlight {
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        /* 小区选择列表样式 */
+        .community-list {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+        
+        .community-card {
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        
+        .community-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+        }
+        
+        .community-card.selected {
+            border-color: #667eea;
+            background: #f5f7ff;
+        }
+        
+        .community-card .info {
+            flex: 1;
+        }
+        
+        .community-card .info h4 {
+            color: #667eea;
+            margin-bottom: 8px;
+            font-size: 18px;
+        }
+        
+        .community-card .info p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .community-card .select-btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .community-card .select-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .selection-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .selection-header h3 {
+            color: #333;
+            font-size: 18px;
+        }
+        
+        .selection-header .count {
+            background: #667eea;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .confirm-section {
+            text-align: center;
+            padding: 20px;
+            background: #f5f7fa;
+            border-radius: 12px;
+        }
+        
+        .confirm-section button {
+            padding: 15px 40px;
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .confirm-section button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(16, 185, 129, 0.4);
+        }
+        
+        .confirm-section button:disabled {
+            background: #9ca3af;
+            transform: none;
+        }
+        
+        .back-btn {
+            padding: 10px 20px;
+            font-size: 14px;
+            color: #667eea;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-right: 15px;
+        }
+        
+        .back-btn:hover {
+            background: #f5f7ff;
+        }
+        
+        @media (max-width: 600px) {
+            .search-box {
+                flex-direction: column;
+            }
+            
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .community-card {
+                flex-direction: column;
+            }
+            
+            .community-card .select-btn {
+                margin-top: 15px;
+                align-self: flex-end;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏠 找房智能体</h1>
+            <p>二手房信息查询助手 -基于乐有家开放API及百度百科真实数据</p>
+        
+        <div class="card">
+            <div class="status-bar">
+                <span>
+                    <span class="online"></span>
+                    <span>乐有家SKILL: 在线</span>
+                </span>
+                <span>
+                    <span class="online"></span>
+                    <span>DeepSeek大模型: 在线</span>
+                </span>
+            </div>
+            
+            <div class="search-box">
+                <input type="text" id="communityInput" placeholder="请输入小区名称（如：阳光花园）" autocomplete="off">
+                <button id="searchBtn" onclick="searchCommunities()">
+                    🔍 查询小区
+                </button>
+            </div>
+            
+            <!-- 小区选择区域 -->
+            <div id="communitySelection" style="display: none;">
+                <div class="selection-header">
+                    <h3>🏘️ 请选择小区</h3>
+                    <span class="count" id="communityCount">0 个小区</span>
+                </div>
+                <div class="community-list" id="communityList"></div>
+                <div class="confirm-section">
+                    <button class="back-btn" onclick="backToSearch()">返回</button>
+                    <button id="confirmBtn" onclick="confirmSelection()" disabled>
+                        ✓ 确认选择并查询房源
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 小区点评展示区域 -->
+            <div id="commentaryCard" class="card" style="display: none; margin-top: 20px;">
+                <h3 style="color: #667eea; margin-bottom: 15px;">🏘️ 小区点评</h3>
+                <div id="commentaryArea" style="padding: 20px; background: #ffffff; border-radius: 12px; white-space: pre-wrap; font-size: 15px; line-height: 1.8; color: #333; border: 1px solid #e0e0e0; text-align: left;"></div>
+            </div>
+            
+            <!-- 成交数据图表 -->
+            <div class="card" id="chartCard" style="display: none; margin-top: 20px;">
+                <h3 style="color: #667eea; margin-bottom: 15px;">📊 近12个月成交数据</h3>
+                <div style="position: relative; width: 100%; height: 450px;">
+                    <canvas id="transactionChart" style="width: 100%; height: 100%;"></canvas>
+                </div>
+            </div>
+            
+            <!-- 房源点评展示区域（可折叠，默认隐藏） -->
+            <div id="houseCommentsCard" class="card" style="display: none; margin-top: 20px;">
+                <h3 id="houseCommentsHeader" style="color: #667eea; margin-bottom: 0; cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center;">
+                    <span>🏠 房源点评（全部）</span>
+                    <span id="houseCommentsToggle" style="font-size: 14px; color: #999;">▶ 展开</span>
+                </h3>
+                <div id="houseCommentsArea" style="display: none; padding: 20px; background: #ffffff; border-radius: 12px; border: 1px solid #e0e0e0; margin-top: 15px; text-align: left;"></div>
+            </div>
+            
+            <!-- 优选房源展示区域 -->
+            <div id="topHousesCard" class="card" style="display: none; margin-top: 20px;">
+                <h3 style="color: #667eea; margin-bottom: 15px;">⭐ 优选房源（TOP 5）</h3>
+                <div id="topHousesButtons" style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                    <button onclick="selectTopHouses('balance')" id="btnBalance" style="padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.3s;">
+                        📊 综合兼顾性价比
+                    </button>
+                    <button onclick="selectTopHouses('price_sensitive')" id="btnPriceSensitive" style="padding: 10px 20px; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.3s;">
+                        💰 价格合理优先
+                    </button>
+                    <button onclick="selectTopHouses('quality')" id="btnQuality" style="padding: 10px 20px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.3s;">
+                        🏠 品质居住优先
+                    </button>
+                </div>
+                <div id="topHousesLoading" style="display: none; text-align: center; padding: 30px; color: #667eea;">
+                    <div class="loading">正在筛选最优房源...</div>
+                </div>
+                <div id="topHousesArea" style="padding: 20px; background: #ffffff; border-radius: 12px; border: 1px solid #e0e0e0;"></div>
+            </div>
+            
+            <!-- 分析结果展示区域 -->
+            <div id="resultArea" class="result-area"></div>
+        </div>
+        
+        <div class="card">
+            <h3>📋 使用说明</h3>
+            <ul style="margin-left: 20px; margin-top: 10px; line-height: 1.8;">
+                <li>输入小区名称，智能体会先搜索匹配的小区列表</li>
+                <li>从列表中选择您感兴趣的小区</li>
+                <li>确认后智能体会查询该小区的房源信息和历史成交数据</li>
+                <li>支持查询深圳市二手房</li>
+                <li>大模型会分析房源数据，生成统计报告和购房建议</li>
+            </ul>
+        </div>
+
+        <!-- LLM 思考时间 -->
+        <div class="card" id="llmTimingCard" style="display: none; background: #fafafa; border: 1px solid #e0e0e0;">
+            <h3 style="color: #999; margin-bottom: 10px; font-size: 14px;">⏱️ 大模型思考时间</h3>
+            <div id="llmTimingArea" style="font-size: 13px; color: #888;"></div>
+        </div>
+    </div>
+
+    <script>
+        let selectedCommunity = null;
+        let communities = [];
+        let currentTaskId = null;
+        let pollTimer = null;
+        let chartInstance = null;
+        let lastChartDataStr = null;
+        
+        async function searchCommunities() {
+            const communityName = document.getElementById('communityInput').value.trim();
+            const resultArea = document.getElementById('resultArea');
+            const searchBtn = document.getElementById('searchBtn');
+            const communitySelection = document.getElementById('communitySelection');
+            
+            if (!communityName) {
+                resultArea.innerHTML = '<div class="error-message">⚠️ 请输入小区名称！</div>';
+                return;
+            }
+            
+            // 显示加载状态
+            searchBtn.disabled = true;
+            resultArea.innerHTML = '<div class="loading">正在搜索小区...</div>';
+            communitySelection.style.display = 'none';
+            
+            try {
+                const response = await fetch('/search_communities', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        community_name: communityName,
+                        city: '深圳'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    communities = data.communities;
+                    
+                    if (communities.length === 0) {
+                        resultArea.innerHTML = '<div class="error-message">❌ 未找到匹配的小区</div>';
+                    } else if (communities.length === 1) {
+                        // 只有一个小区，直接选择并查询
+                        selectedCommunity = communities[0];
+                        searchHouses(selectedCommunity.name);
+                    } else {
+                        // 显示小区选择列表
+                        showCommunityList();
+                    }
+                } else {
+                    resultArea.innerHTML = `<div class="error-message">❌ 查询失败: ${data.error}</div>`;
+                }
+            } catch (error) {
+                resultArea.innerHTML = `<div class="error-message">❌ 网络错误: ${error.message}</div>`;
+            } finally {
+                searchBtn.disabled = false;
+            }
+        }
+        
+        function showCommunityList() {
+            const communityList = document.getElementById('communityList');
+            const communityCount = document.getElementById('communityCount');
+            const communitySelection = document.getElementById('communitySelection');
+            const resultArea = document.getElementById('resultArea');
+            
+            communityCount.textContent = `${communities.length} 个小区`;
+            
+            communityList.innerHTML = communities.map((community, index) => `
+                <div class="community-card" onclick="selectCommunity(${index})">
+                    <div class="info">
+                        <h4>${index + 1}. ${community.name}</h4>
+                        <p>📍 地址：${community.address || '暂无'}</p>
+                        <p>💰 均价：${community.avg_price ? community.avg_price.toLocaleString() + '元/㎡' : '暂无'}</p>
+                        <p>🏗️ 建成年代：${community.build_year || '暂无'}</p>
+                        <p>🏢 开发商：${community.developer || '暂无'}</p>
+                        <p>🏠 物业公司：${community.property_company || '暂无'}</p>
+                    </div>
+                    <button class="select-btn">选择</button>
+                </div>
+            `).join('');
+            
+            communitySelection.style.display = 'block';
+            resultArea.innerHTML = '';
+            selectedCommunity = null;
+            document.getElementById('confirmBtn').disabled = true;
+        }
+        
+        function selectCommunity(index) {
+            // 清除之前的选择
+            document.querySelectorAll('.community-card').forEach((card, i) => {
+                card.classList.remove('selected');
+            });
+            
+            // 设置当前选择
+            selectedCommunity = communities[index];
+            document.querySelectorAll('.community-card')[index].classList.add('selected');
+            document.getElementById('confirmBtn').disabled = false;
+        }
+        
+        function confirmSelection() {
+            if (selectedCommunity) {
+                searchHouses(selectedCommunity.name);
+            }
+        }
+        
+        function backToSearch() {
+            if (pollTimer) clearInterval(pollTimer);
+            pollTimer = null;
+            currentTaskId = null;
+            document.getElementById('communitySelection').style.display = 'none';
+            document.getElementById('resultArea').style.display = 'block';
+            document.getElementById('resultArea').innerHTML = '';
+            selectedCommunity = null;
+        }
+        
+        async function searchHouses(communityName) {
+            const resultArea = document.getElementById('resultArea');
+            const communitySelection = document.getElementById('communitySelection');
+            const confirmBtn = document.getElementById('confirmBtn');
+
+            // 重置图表状态
+            if (chartInstance) {
+                chartInstance.destroy();
+                chartInstance = null;
+            }
+            lastChartDataStr = null;
+            document.getElementById('chartCard').style.display = 'none';
+
+            // 重置其他UI状态
+            document.getElementById('commentaryCard').style.display = 'none';
+            document.getElementById('houseCommentsCard').style.display = 'none';
+            document.getElementById('topHousesCard').style.display = 'none';
+
+            confirmBtn.disabled = true;
+            communitySelection.style.display = 'none';
+            resultArea.style.display = 'block';
+            resultArea.innerHTML = '<div class="loading">正在查询房源信息和历史成交数据...</div>';
+
+            try {
+                const response = await fetch('/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        community_name: communityName,
+                        city: '深圳',
+                        community_details: selectedCommunity ? selectedCommunity.full_data : null
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.task_id) {
+                    currentTaskId = data.task_id;
+                    startPolling();
+                } else {
+                    resultArea.innerHTML = `<div class="error-message">❌ 启动查询失败: ${data.error || '未知错误'}</div>`;
+                    confirmBtn.disabled = false;
+                }
+            } catch (error) {
+                resultArea.innerHTML = `<div class="error-message">❌ 网络错误: ${error.message}</div>`;
+                confirmBtn.disabled = false;
+            }
+        }
+
+        function startPolling() {
+            if (pollTimer) clearInterval(pollTimer);
+            document.getElementById('resultArea').innerHTML = '<div class="loading">正在查询房源信息...（可能需要几分钟）</div>';
+            pollTimer = setInterval(pollTaskStatus, 2000);
+        }
+
+        async function pollTaskStatus() {
+            if (!currentTaskId) return;
+
+            try {
+                const response = await fetch(`/task_status/${currentTaskId}`);
+                const data = await response.json();
+
+                if (data.progress) {
+                    document.getElementById('resultArea').innerHTML = `<div class="loading">${data.progress}</div>`;
+                }
+
+                // 增量展示：数据准备好了就立即展示，不需要等待全部完成
+                if (data.community_commentary) {
+                    showCommunityCommentary(data.community_commentary);
+                }
+                
+                if (data.house_comments && data.house_comments.length > 0) {
+                    showHouseComments(data.house_comments);
+                }
+                
+                if (data.top_houses && data.top_houses.length > 0) {
+                    showTopHouses(data.top_houses);
+                }
+                
+                if (data.community_info && data.community_info.length > 0) {
+                    renderTransactionChart(data.community_info[0]);
+                }
+                
+                if (data.llm_timings && data.llm_timings.length > 0) {
+                    showLLMTimings(data.llm_timings);
+                }
+
+                if (data.status === 'done') {
+                    clearInterval(pollTimer);
+                    pollTimer = null;
+                    document.getElementById('resultArea').style.display = 'none';
+                    document.getElementById('resultArea').innerHTML = '';
+                    document.getElementById('confirmBtn').disabled = false;
+                } else if (data.status === 'error') {
+                    clearInterval(pollTimer);
+                    pollTimer = null;
+                    document.getElementById('resultArea').style.display = 'block';
+                    document.getElementById('resultArea').innerHTML = `<div class="error-message">❌ 查询失败: ${data.error}</div>`;
+                    document.getElementById('confirmBtn').disabled = false;
+                }
+            } catch (error) {
+                clearInterval(pollTimer);
+                pollTimer = null;
+                document.getElementById('resultArea').innerHTML = `<div class="error-message">❌ 状态查询失败: ${error.message}</div>`;
+                document.getElementById('confirmBtn').disabled = false;
+            }
+        }
+
+        function escapeHTML(str) {
+            const div = document.createElement('div');
+            div.appendChild(document.createTextNode(str));
+            return div.innerHTML;
+        }
+
+        function showCommunityCommentary(commentary) {
+            const commentaryCard = document.getElementById('commentaryCard');
+            const commentaryArea = document.getElementById('commentaryArea');
+            commentaryCard.style.display = 'block';
+            commentaryArea.innerText = commentary;
+        }
+
+        function showHouseComments(comments) {
+            const houseCommentsCard = document.getElementById('houseCommentsCard');
+            const houseCommentsArea = document.getElementById('houseCommentsArea');
+            const houseCommentsToggle = document.getElementById('houseCommentsToggle');
+            houseCommentsCard.style.display = 'block';
+            houseCommentsArea.style.display = 'none';
+            houseCommentsToggle.textContent = '▶ 展开';
+            let html = '';
+            for (const c of comments) {
+                const ratingColor = c.rating === '优秀' ? '#52c41a' : (c.rating === '良好' ? '#faad14' : '#f5222d');
+                const safeUrl = c.url ? c.url.replace(/"/g, '&quot;') : '';
+                const safeComment = escapeHTML(c.comment || '');
+                html += `<div style="margin-bottom: 15px; padding: 15px; background: white; border-radius: 10px; border-left: 4px solid ${ratingColor};">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <strong style="font-size: 15px;">${escapeHTML(c.rooms || '')}</strong>
+                        <span style="font-weight: bold; color: ${ratingColor}; padding: 2px 8px; background: rgba(82,196,26,0.1); border-radius: 4px;">${escapeHTML(c.rating || '')}</span>
+                    </div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; font-size: 13px; color: #666;">
+                        ${c.area ? `<span>面积：${escapeHTML(String(c.area))}㎡</span>` : ''}
+                        ${c.orientation ? `<span>朝向：${escapeHTML(c.orientation)}</span>` : ''}
+                        ${c.floor ? `<span>楼层：${escapeHTML(String(c.floor))}层</span>` : ''}
+                        ${c.decoration ? `<span>装修：${escapeHTML(c.decoration)}</span>` : ''}
+                        ${c.unit_price ? `<span>单价：${escapeHTML(String(c.unit_price))}元/㎡</span>` : ''}
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="font-size: 16px; font-weight: bold; color: #e74c3c;">${escapeHTML(c.price || '')}</span>
+                        ${safeUrl ? `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="color: #667eea; text-decoration: none; font-size: 13px; background: rgba(102,126,234,0.08); padding: 4px 10px; border-radius: 6px;">🔗 查看详情</a>` : ''}
+                    </div>
+                    <div style="font-size: 14px; line-height: 1.6; color: #444; padding-top: 10px; border-top: 1px dashed #eee;">${safeComment}</div>
+                </div>`;
+            }
+            houseCommentsArea.innerHTML = html;
+            
+            const topHousesCard = document.getElementById('topHousesCard');
+            topHousesCard.style.display = 'block';
+        }
+
+        function showTopHouses(houses) {
+            const topHousesCard = document.getElementById('topHousesCard');
+            const topHousesArea = document.getElementById('topHousesArea');
+            topHousesCard.style.display = 'block';
+            let html = '';
+            for (const house of houses) {
+                const ratingColor = house.评级 === '优秀' ? '#26a69a' : (house.评级 === '良好' ? '#ff9800' : '#ef5350');
+                const bgColors = ['linear-gradient(135deg, #e8f5f3 0%, #fff 100%)', 
+                                  'linear-gradient(135deg, #fff3e0 0%, #fff 100%)', 
+                                  'linear-gradient(135deg, #ffebee 0%, #fff 100%)'];
+                const borderColors = ['#b2dfdb', '#ffcc80', '#ffcdd2'];
+                const ratingIndex = house.评级 === '优秀' ? 0 : (house.评级 === '良好' ? 1 : 2);
+                const safeLink = house.链接 ? house.链接.replace(/"/g, '&quot;') : '';
+                const safeReview = escapeHTML(house.房源点评 || '暂无');
+                const safeReason = escapeHTML(house.推荐理由 || '');
+                html += `<div style="margin-bottom: 20px; padding: 20px; background: ${bgColors[ratingIndex]}; border-radius: 16px; border: 1px solid ${borderColors[ratingIndex]}; position: relative; text-align: left;">
+                    <div style="position: absolute; top: -12px; left: 20px; background: ${ratingColor}; color: white; padding: 4px 14px; border-radius: 12px; font-size: 13px; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">TOP ${house.序号}</div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 15px; margin-top: 8px; align-items: center;">
+                        <span style="font-size: 17px; font-weight: bold; color: #1a237e;">${escapeHTML(house.房型 || '')}</span>
+                        <span style="font-size: 14px; color: #546e7a; padding: 4px 10px; background: rgba(255,255,255,0.8); border-radius: 6px;">${escapeHTML(String(house.面积 || ''))}</span>
+                        <span style="font-size: 14px; color: #546e7a; padding: 4px 10px; background: rgba(255,255,255,0.8); border-radius: 6px;">${escapeHTML(house.朝向 || '')}</span>
+                        <span style="font-size: 14px; color: #546e7a; padding: 4px 10px; background: rgba(255,255,255,0.8); border-radius: 6px;">${escapeHTML(String(house.楼层 || ''))}</span>
+                        ${house.装修 ? `<span style="font-size: 14px; color: #546e7a; padding: 4px 10px; background: rgba(255,255,255,0.8); border-radius: 6px;">${escapeHTML(house.装修)}</span>` : ''}
+                        <span style="font-weight: bold; color: white; padding: 4px 12px; background: ${ratingColor}; border-radius: 6px; font-size: 13px;">${escapeHTML(house.评级 || '')}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 12px; background: rgba(255,255,255,0.9); border-radius: 10px;">
+                        <div>
+                            <span style="font-size: 20px; font-weight: bold; color: #d32f2f;">${escapeHTML(house.总价 || '')}</span>
+                            <span style="font-size: 14px; color: #666; margin-left: 10px;">单价 ${escapeHTML(String(house.单价 || ''))}</span>
+                        </div>
+                        ${safeLink ? `<a href="${safeLink}" target="_blank" rel="noopener noreferrer" style="color: #1976d2; text-decoration: none; font-size: 14px; font-weight: 500; padding: 6px 14px; background: rgba(25,118,210,0.1); border-radius: 8px; border: 1px solid rgba(25,118,210,0.3);">🔗 查看详情</a>` : ''}
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 12px; border-left: 4px solid ${ratingColor}; margin-bottom: 12px;">
+                        <div style="font-size: 14px; font-weight: bold; color: #2c3e50; margin-bottom: 8px;">📝 房源点评</div>
+                        <div style="font-size: 14px; line-height: 1.8; color: #34495e;">${safeReview}</div>
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 12px; border-left: 4px solid ${ratingColor};">
+                        <div style="font-size: 14px; font-weight: bold; color: #2c3e50; margin-bottom: 8px;">💡 入选理由</div>
+                        <div style="font-size: 14px; line-height: 1.8; color: #34495e;">${safeReason}</div>
+                    </div>
+                </div>`;
+            }
+            topHousesArea.innerHTML = html;
+        }
+
+        function showLLMTimings(timings) {
+            const timingCard = document.getElementById('llmTimingCard');
+            const timingArea = document.getElementById('llmTimingArea');
+            timingCard.style.display = 'block';
+            let totalTime = 0;
+            let html = '<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">';
+            for (const t of timings) {
+                totalTime += t.elapsed;
+                const color = t.elapsed > 30 ? '#e74c3c' : (t.elapsed > 15 ? '#faad14' : '#52c41a');
+                html += `<span style="background: white; padding: 6px 12px; border-radius: 20px; border: 1px solid #e8e8e8; white-space: nowrap;">
+                    <span style="font-weight: 500;">${t.node_name}</span>
+                    &nbsp;<span style="color: ${color}; font-weight: bold;">${t.elapsed}s</span>
+                </span>`;
+            }
+            html += `<span style="margin-left: auto; font-weight: bold; color: #667eea; font-size: 14px;">合计 ${totalTime.toFixed(1)}s</span>`;
+            html += '</div>';
+            timingArea.innerHTML = html;
+        }
+
+        function toggleHouseComments() {
+            const area = document.getElementById('houseCommentsArea');
+            const toggle = document.getElementById('houseCommentsToggle');
+            if (area.style.display === 'none') {
+                area.style.display = 'block';
+                toggle.textContent = '▼ 收起';
+            } else {
+                area.style.display = 'none';
+                toggle.textContent = '▶ 展开';
+            }
+        }
+
+        function selectTopHouses(version) {
+            if (!currentTaskId) {
+                alert('请先完成房源搜索');
+                return;
+            }
+
+            const buttons = document.querySelectorAll('#topHousesButtons button');
+            const loading = document.getElementById('topHousesLoading');
+            const area = document.getElementById('topHousesArea');
+
+            buttons.forEach(btn => btn.disabled = true);
+            loading.style.display = 'block';
+            area.innerHTML = '';
+
+            fetch('/select_top_houses', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    task_id: currentTaskId,
+                    version: version
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                buttons.forEach(btn => btn.disabled = false);
+                loading.style.display = 'none';
+
+                if (data.success && data.top_houses && data.top_houses.length > 0) {
+                    showTopHouses(data.top_houses);
+                    
+                    if (data.selection_version) {
+                        const h3 = document.querySelector('#topHousesCard h3');
+                        h3.textContent = `⭐ 优选房源（TOP 5）- ${data.selection_version}`;
+                    }
+                    
+                    if (data.llm_timings && data.llm_timings.length > 0) {
+                        showLLMTimings(data.llm_timings);
+                    }
+                } else {
+                    area.innerHTML = '<div style="text-align: center; padding: 25px 20px; color: #999; font-size: 15px;">暂无优选房源数据</div>';
+                }
+            })
+            .catch(error => {
+                buttons.forEach(btn => btn.disabled = false);
+                loading.style.display = 'none';
+                console.error('Error:', error);
+                area.innerHTML = '<div style="text-align: center; padding: 25px 20px; color: #f5222d; font-size: 15px;">获取优选房源失败</div>';
+            });
+        }
+
+        function renderTransactionChart(communityInfo) {
+            const chartCard = document.getElementById('chartCard');
+            
+            const priceData = communityInfo['近12个月成交数据'] || [];
+            const currentDataStr = JSON.stringify(priceData);
+            
+            if (currentDataStr === lastChartDataStr && chartInstance) {
+                return;
+            }
+            lastChartDataStr = currentDataStr;
+            
+            chartCard.style.display = 'block';
+
+            if (chartInstance) {
+                chartInstance.destroy();
+                chartInstance = null;
+            }
+
+            function extractValues(data) {
+                return data.map(function (item) {
+                    if (typeof item === 'number') return item;
+                    if (typeof item === 'object' && item !== null) {
+                        var val = item['值'];
+                        if (val === null || val === undefined || isNaN(val)) return NaN;
+                        return Number(val);
+                    }
+                    return NaN;
+                });
+            }
+
+            function extractMonths(data) {
+                return data.map(function (item) {
+                    if (typeof item === 'object' && item !== null && item['月份']) {
+                        var m = item['月份'];
+                        var parts = m.split('-');
+                        return parts.length >= 2 ? (parseInt(parts[1], 10) + '月') : m;
+                    }
+                    return '';
+                });
+            }
+
+            const priceValues = extractValues(priceData);
+            const months = extractMonths(priceData);
+
+            const hasAnyPrice = priceValues.some(function (p) { return !isNaN(p) && p > 0; });
+
+            if (!hasAnyPrice) {
+                chartCard.style.display = 'block';
+                document.getElementById('transactionChart').style.display = 'none';
+                var msgEl = document.getElementById('chartNoDataMsg');
+                if (!msgEl) {
+                    msgEl = document.createElement('div');
+                    msgEl.id = 'chartNoDataMsg';
+                    msgEl.style.cssText = 'text-align: center; padding: 30px 20px; color: #999; font-size: 15px;';
+                    document.getElementById('transactionChart').parentElement.appendChild(msgEl);
+                }
+                msgEl.textContent = '近12个月无对应数据';
+                return;
+            } else {
+                document.getElementById('transactionChart').style.display = '';
+                var msgEl = document.getElementById('chartNoDataMsg');
+                if (msgEl) msgEl.remove();
+            }
+
+            const lineData = priceValues.map(function (p) {
+                return isNaN(p) ? NaN : p;
+            });
+
+            const ctx = document.getElementById('transactionChart').getContext('2d');
+
+            const priceColor = '#e74c3c';
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [
+                        {
+                            label: '均价（元/㎡）',
+                            data: lineData,
+                            borderColor: priceColor,
+                            backgroundColor: priceColor + '20',
+                            borderWidth: 3,
+                            pointRadius: 5,
+                            pointBackgroundColor: priceColor,
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            tension: 0.3,
+                            fill: true,
+                            spanGaps: false,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20,
+                                font: { size: 13 },
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    if (isNaN(context.parsed.y)) return null;
+                                    return '均价: ' + context.parsed.y.toLocaleString() + ' 元/㎡';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: '月份',
+                                font: { size: 13 },
+                            },
+                            grid: { display: false },
+                        },
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: '均价（元/㎡）',
+                                font: { size: 13 },
+                            },
+                            ticks: {
+                                callback: function(v) { return (v / 10000).toFixed(1) + '万'; },
+                            },
+                            grid: { color: '#f0f0f0' },
+                        },
+                    },
+                },
+            });
+        }
+
+        // 房源点评折叠点击事件
+        document.getElementById('houseCommentsHeader').addEventListener('click', toggleHouseComments);
+
+        // 回车键触发查询
+        document.getElementById('communityInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                if (document.getElementById('communitySelection').style.display === 'block') {
+                    confirmSelection();
+                } else {
+                    searchCommunities();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

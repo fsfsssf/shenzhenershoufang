@@ -1,0 +1,19 @@
+# Web Framework
+Flask>=2.3.0
+flask-cors>=4.0.0
+gunicorn>=22.0.0
+
+# Environment
+python-dotenv>=1.0.0
+
+# OpenAI SDK (DeepSeek兼容)
+openai>=1.68.0,<2.0.0
+
+# HTTP Client
+requests>=2.31.0
+
+# Date/Time
+python-dateutil>=2.8.0
+
+# Chart.js (via CDN, no pip install needed)
+# <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
