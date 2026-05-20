@@ -1,0 +1,2 @@
+# shenzhenershoufang
+基于乐有家开放API和百度百科API，实现二手房的小区信息分析介绍、房源点评
